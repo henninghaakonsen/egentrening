@@ -1,7 +1,10 @@
 import React from 'react';
+import { useFirebase } from './utils/firebase';
 
 function App() {
-    return <div className="App">Hello world</div>;
+    const { authenticated, user } = useFirebase();
+
+    return <div className="App">{authenticated ? user?.displayName : 'Logg inn'}</div>;
 }
 
 export default App;
