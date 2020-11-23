@@ -25,7 +25,11 @@ const [FirebaseProvider, useFirebase] = createUseContext(() => {
         if (user) {
             settUser(user);
             settAuthenticated(true);
-        } else {
+        }
+    });
+
+    const loggInn = () => {
+        if (!authenticated) {
             firebase
                 .auth()
                 .signInWithPopup(provider)
@@ -38,11 +42,12 @@ const [FirebaseProvider, useFirebase] = createUseContext(() => {
                     console.log(error);
                 });
         }
-    });
+    };
 
     return {
         authenticated,
         user,
+        loggInn,
         firebase,
     };
 });
