@@ -1,4 +1,12 @@
-import { Button, ChakraProvider, Heading, Text } from '@chakra-ui/react';
+import {
+    Button,
+    Center,
+    ColorModeProvider,
+    Heading,
+    Text,
+    theme,
+    ThemeProvider,
+} from '@chakra-ui/react';
 import React from 'react';
 import { useFirebase } from './utils/firebase';
 
@@ -6,14 +14,22 @@ const App: React.FC = () => {
     const { authenticated, loggInn, user } = useFirebase();
 
     return (
-        <ChakraProvider>
-            <Heading>Velkommen til egentrening</Heading>
-            {authenticated ? (
-                <Text>{user?.displayName}</Text>
-            ) : (
-                <Button onClick={loggInn}>Logg inn</Button>
-            )}
-        </ChakraProvider>
+        <ThemeProvider theme={theme}>
+            <ColorModeProvider
+                options={{
+                    initialColorMode: 'light',
+                }}
+            >
+                <Center flexDir={'column'}>
+                    <Heading>Egentrening</Heading>
+                    {authenticated ? (
+                        <Text>{user?.displayName}</Text>
+                    ) : (
+                        <Button onClick={loggInn}>Logg inn</Button>
+                    )}
+                </Center>
+            </ColorModeProvider>
+        </ThemeProvider>
     );
 };
 
