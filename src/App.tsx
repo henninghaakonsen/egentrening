@@ -4,10 +4,15 @@ import {
     ColorModeProvider,
     Heading,
     Text,
+    Flex,
     theme,
     ThemeProvider,
 } from '@chakra-ui/react';
 import React from 'react';
+import { BrowserRouter, Redirect, Route, Switch } from 'react-router-dom';
+import Aktiviteter from './components/Aktiviteter';
+import Feed from './components/Feed';
+import Meny from './components/Meny';
 import { useFirebase } from './utils/firebase';
 
 const App: React.FC = () => {
@@ -20,14 +25,31 @@ const App: React.FC = () => {
                     initialColorMode: 'light',
                 }}
             >
-                <Center flexDir={'column'}>
-                    <Heading>Egentrening</Heading>
+                <Flex height={'100vh'} flexDir={'column'}>
                     {authenticated ? (
-                        <Text>{user?.displayName}</Text>
+                        <BrowserRouter>
+                            <Center flexDir={'column'}>
+                                <Heading>Egentrening</Heading>
+                                <Text>{user?.displayName}</Text>
+                                <Switch>
+                                    <Route path={'/feed'} exact component={Feed} />
+                                    <Route
+                                        path={'/registrer'}
+                                        exact
+                                        render={() => {
+                                            return <Text>Aktivitet</Text>;
+                                        }}
+                                    />
+                                    <Route path={'/aktiviteter'} exact component={Aktiviteter} />
+                                    <Redirect exact path={'/'} to={'/feed'} />
+                                </Switch>
+                            </Center>
+                            <Meny />
+                        </BrowserRouter>
                     ) : (
                         <Button onClick={loggInn}>Logg inn</Button>
                     )}
-                </Center>
+                </Flex>
             </ColorModeProvider>
         </ThemeProvider>
     );
