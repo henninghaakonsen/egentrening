@@ -33,11 +33,11 @@ function LeggTilEllerEndreAktivitet({ aktivitet }: { aktivitet?: Aktivitet }) {
     const { isOpen, onOpen, onClose } = useDisclosure();
 
     const [navn, settNavn] = useState(aktivitet?.navn);
-    const [ukesmål, settUkesmål] = useState(aktivitet?.ukesmål ?? undefined);
+    const [ukesmål, settUkesmål] = useState(10);
 
     return (
         <>
-            <Button mt={4} onClick={onOpen}>
+            <Button m={4} pt={2} onClick={onOpen}>
                 Ny aktivitet
             </Button>
             <Modal blockScrollOnMount={true} isOpen={isOpen} onClose={onClose}>

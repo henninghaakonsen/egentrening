@@ -28,7 +28,7 @@ const [FirebaseProvider, useFirebase] = createUseContext(() => {
             settAuthenticated(true);
         }
     });
-    const { aktiviteter } = useDatabase(firebase.firestore());
+    const { aktiviteter } = useDatabase(firebase.firestore(), user);
 
     const loggInn = () => {
         if (!authenticated) {
@@ -47,11 +47,11 @@ const [FirebaseProvider, useFirebase] = createUseContext(() => {
     };
 
     return {
-        authenticated,
         aktiviteter,
-        user,
-        loggInn,
+        authenticated,
         firebase,
+        loggInn,
+        user,
     };
 });
 
