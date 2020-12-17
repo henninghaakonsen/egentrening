@@ -1,6 +1,7 @@
 import firebase from 'firebase';
 import { useState } from 'react';
 import createUseContext from 'constate';
+import useDatabase from './useDatabase';
 
 const firebaseConfig = {
     apiKey: 'AIzaSyCTYvodP0p2y2HF27qMhOET-jPmQ9AZg3I',
@@ -27,6 +28,7 @@ const [FirebaseProvider, useFirebase] = createUseContext(() => {
             settAuthenticated(true);
         }
     });
+    const { aktiviteter, oppdaterUkesmål, profil } = useDatabase(firebase.firestore(), user);
 
     const loggInn = () => {
         if (!authenticated) {
@@ -45,10 +47,13 @@ const [FirebaseProvider, useFirebase] = createUseContext(() => {
     };
 
     return {
+        aktiviteter,
         authenticated,
-        user,
-        loggInn,
         firebase,
+        loggInn,
+        oppdaterUkesmål,
+        profil,
+        user,
     };
 });
 

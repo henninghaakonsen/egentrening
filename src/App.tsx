@@ -1,17 +1,10 @@
-import {
-    Button,
-    Center,
-    ColorModeProvider,
-    Heading,
-    Text,
-    theme,
-    ThemeProvider,
-} from '@chakra-ui/react';
+import { Button, ColorModeProvider, Flex, theme, ThemeProvider } from '@chakra-ui/react';
 import React from 'react';
+import Tjeneste from './components/Tjeneste';
 import { useFirebase } from './utils/firebase';
 
 const App: React.FC = () => {
-    const { authenticated, loggInn, user } = useFirebase();
+    const { authenticated, loggInn } = useFirebase();
 
     return (
         <ThemeProvider theme={theme}>
@@ -20,14 +13,9 @@ const App: React.FC = () => {
                     initialColorMode: 'light',
                 }}
             >
-                <Center flexDir={'column'}>
-                    <Heading>Egentrening</Heading>
-                    {authenticated ? (
-                        <Text>{user?.displayName}</Text>
-                    ) : (
-                        <Button onClick={loggInn}>Logg inn</Button>
-                    )}
-                </Center>
+                <Flex height={'100vh'} flexDir={'column'}>
+                    {authenticated ? <Tjeneste /> : <Button onClick={loggInn}>Logg inn</Button>}
+                </Flex>
             </ColorModeProvider>
         </ThemeProvider>
     );
