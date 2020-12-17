@@ -28,7 +28,7 @@ const [FirebaseProvider, useFirebase] = createUseContext(() => {
             settAuthenticated(true);
         }
     });
-    const { aktiviteter } = useDatabase(firebase.firestore(), user);
+    const { aktiviteter, oppdaterUkesmål, profil } = useDatabase(firebase.firestore(), user);
 
     const loggInn = () => {
         if (!authenticated) {
@@ -51,6 +51,8 @@ const [FirebaseProvider, useFirebase] = createUseContext(() => {
         authenticated,
         firebase,
         loggInn,
+        oppdaterUkesmål,
+        profil,
         user,
     };
 });

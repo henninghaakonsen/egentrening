@@ -1,12 +1,20 @@
 import firebase from 'firebase';
 import { useEffect, useState } from 'react';
-import { Aktivitet, initiellProfil, Profil } from '../typer';
+import {
+    byggDataRessurs,
+    byggFeiletRessurs,
+    byggHenterRessurs,
+    byggTomRessurs,
+    Ressurs,
+    RessursStatus,
+} from '../typer/ressurs';
+import { Aktivitet, AktivitetID, initiellProfil, Profil } from '../typer/typer';
 
 const profilCollection = 'profil';
 
 const useDatabase = (db: firebase.firestore.Firestore, user: firebase.User | null) => {
     const [aktiviteter, settAktiviteter] = useState<Aktivitet[]>([]);
-    const [profil, settProfil] = useState<Profil>(initiellProfil);
+    const [profil, settProfil] = useState<Ressurs<Profil>>(byggTomRessurs());
 
     const hentAktiviteter = async () => {
         return await db
@@ -20,21 +28,48 @@ const useDatabase = (db: firebase.firestore.Firestore, user: firebase.User | nul
 
     const initialiserProfil = () => {
         if (user?.uid !== undefined) {
-            db.collection(profilCollection).doc(user.uid).set(initiellProfil);
+            db.collection(profilCollection)
+                .doc(user.uid)
+                .set(initiellProfil)
+                .then(() => {
+                    settProfil(byggDataRessurs(initiellProfil));
+                });
         }
     };
 
     const hentProfil = () => {
+        settProfil(byggHenterRessurs());
         if (user?.uid !== undefined) {
             db.collection(profilCollection)
                 .doc(user.uid)
                 .get()
                 .then((doc: any) => {
                     if (doc.exists) {
-                        settProfil(doc.data());
+                        settProfil(byggDataRessurs(doc.data()));
                     } else {
                         initialiserProfil();
                     }
+                });
+        } else {
+            settProfil(byggFeiletRessurs('Finner ikke profil'));
+        }
+    };
+
+    const oppdaterUkesmål = (aktivitetId: AktivitetID, nyttUkesmål: number) => {
+        if (profil.status === RessursStatus.SUKSESS && user?.uid !== undefined) {
+            const nyProfil: Profil = {
+                ...profil.data,
+                mineMål: {
+                    ...profil.data.mineMål,
+                    [aktivitetId]: nyttUkesmål,
+                },
+            };
+
+            db.collection(profilCollection)
+                .doc(user.uid)
+                .set(nyProfil)
+                .then(() => {
+                    settProfil(byggDataRessurs(nyProfil));
                 });
         }
     };
@@ -44,9 +79,9 @@ const useDatabase = (db: firebase.firestore.Firestore, user: firebase.User | nul
         hentProfil();
     }, [user]);
 
-    console.log(profil);
     return {
         aktiviteter,
+        oppdaterUkesmål,
         profil,
     };
 };
