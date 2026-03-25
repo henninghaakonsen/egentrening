@@ -151,6 +151,15 @@ function buildWallGeometry(wall: Wall): THREE.BufferGeometry {
     indices.push(b+1, b+0, b+2,  b+1, b+2, b+3)
   }
 
+  // DEBUG: log first wall's Y extents to verify geometry is upright
+  if (positions.length > 0) {
+    const ys = []
+    for (let i = 1; i < positions.length; i += 3) ys.push(positions[i])
+    console.log('[WallMesh] wall', wall.id, '| segs:', segs.length,
+      '| Y range:', Math.min(...ys).toFixed(2), '→', Math.max(...ys).toFixed(2),
+      '| expected 0 →', wall.height)
+  }
+
   const geo = new THREE.BufferGeometry()
   geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(positions), 3))
   geo.setIndex(indices)
