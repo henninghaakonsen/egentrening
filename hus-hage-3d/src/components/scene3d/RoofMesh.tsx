@@ -38,55 +38,56 @@ export default function RoofMesh({ walls, roof }: Props) {
     }
 
     // Saltak (gable roof)
+    // Ridge runs along the LONGER horizontal axis so the roof looks correct.
+    // For a house wider in X than Z: ridge along X, slopes in ±Z direction.
     const pitchRad = (roof.pitch * Math.PI) / 180
-    const ridgeH = (footX / 2) * Math.tan(pitchRad) // height of ridge above wall top
-
-    // Build gable roof from scratch using BufferGeometry
-    // Ridge along Z axis at center
-    const ridgeY = maxWallH + ridgeH
-
-    // Vertices:
-    // left edge bottom-front, right edge bottom-front, ridge-front
-    // left edge bottom-back, right edge bottom-back, ridge-back
     const hx = footX / 2
     const hz = footZ / 2
     const baseY = maxWallH
 
-    const vertices = new Float32Array([
-      // Front face (z = -hz)
-      -hx, baseY, -hz, // 0: left-front-bottom
-       hx, baseY, -hz, // 1: right-front-bottom
-        0, ridgeY, -hz, // 2: ridge-front
-
-      // Back face (z = +hz)
-      -hx, baseY, hz, // 3: left-back-bottom
-       hx, baseY, hz, // 4: right-back-bottom
-        0, ridgeY, hz, // 5: ridge-back
-
-      // Left slope
-      -hx, baseY, -hz, // 6 = 0
-      -hx, baseY,  hz, // 7 = 3
-        0, ridgeY, -hz, // 8 = 2
-        0, ridgeY,  hz, // 9 = 5
-
-      // Right slope
-       hx, baseY, -hz, // 10 = 1
-       hx, baseY,  hz, // 11 = 4
-        0, ridgeY, -hz, // 12 = 2
-        0, ridgeY,  hz, // 13 = 5
-    ])
+    let ridgeH: number
+    let vertices: Float32Array
+    if (footX >= footZ) {
+      // Ridge along X, slopes in ±Z
+      ridgeH = hz * Math.tan(pitchRad)
+      const ridgeY = baseY + ridgeH
+      vertices = new Float32Array([
+        // Front slope base (z = -hz): 0,1
+        -hx, baseY, -hz,
+         hx, baseY, -hz,
+        // Back slope base (z = +hz): 2,3
+        -hx, baseY,  hz,
+         hx, baseY,  hz,
+        // Ridge (z = 0): 4,5
+        -hx, ridgeY, 0,
+         hx, ridgeY, 0,
+      ])
+    } else {
+      // Ridge along Z, slopes in ±X
+      ridgeH = hx * Math.tan(pitchRad)
+      const ridgeY = baseY + ridgeH
+      vertices = new Float32Array([
+        // Left slope base (x = -hx): 0,1
+        -hx, baseY, -hz,
+        -hx, baseY,  hz,
+        // Right slope base (x = +hx): 2,3
+         hx, baseY, -hz,
+         hx, baseY,  hz,
+        // Ridge (x = 0): 4,5
+         0, ridgeY, -hz,
+         0, ridgeY,  hz,
+      ])
+    }
 
     const indices = [
-      // Front triangle
-      0, 2, 1,
-      // Back triangle
-      3, 4, 5,
-      // Left slope (2 triangles)
-      6, 8, 7,
-      8, 9, 7,
-      // Right slope (2 triangles)
-      10, 11, 12,
-      12, 11, 13,
+      // Front slope: 0,1,4 + 1,5,4
+      0, 1, 4,  1, 5, 4,
+      // Back slope:  2,3,5 + 2,5,4 ... wait, reversed
+      3, 2, 5,  2, 4, 5,
+      // Left gable: 0,2,4
+      2, 0, 4,
+      // Right gable: 1,3,5
+      1, 3, 5,
     ]
 
     const geo = new THREE.BufferGeometry()
