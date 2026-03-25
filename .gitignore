@@ -22,3 +22,5 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+hus-hage-3d/node_modules/
+hus-hage-3d/dist/
