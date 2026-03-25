@@ -1,5 +1,4 @@
 import React, { useMemo } from 'react'
-import * as THREE from 'three'
 import type { Wall } from '../../types'
 
 interface Props {
@@ -8,99 +7,119 @@ interface Props {
   onClick: () => void
 }
 
+interface Seg {
+  cx: number  // center along wall (0..len)
+  cy: number  // center height (world Y)
+  wx: number  // width along wall
+  wy: number  // height
+}
+
 /**
- * Builds wall geometry using THREE.Shape with rectangular holes for openings.
- * The shape is a 2D cross-section (length × height) with hole cutouts,
- * extruded to wall thickness.
+ * Splits the wall into solid box segments, cutting out rectangular openings.
+ * Returns segments in wall-local coordinates (cx along wall, cy = height center).
  */
-function buildWallGeometry(wall: Wall): THREE.BufferGeometry {
+function wallSegments(wall: Wall): Seg[] {
   const dx = wall.end.x - wall.start.x
   const dy = wall.end.y - wall.start.y
   const len = Math.hypot(dx, dy)
-  if (len < 0.05) return new THREE.BufferGeometry()
+  if (len < 0.05) return []
 
-  // Wall face shape: rectangle [0, len] × [0, height]
-  const shape = new THREE.Shape()
-  shape.moveTo(0, 0)
-  shape.lineTo(len, 0)
-  shape.lineTo(len, wall.height)
-  shape.lineTo(0, wall.height)
-  shape.closePath()
+  const h = wall.height
+  const segs: Seg[] = []
 
-  // Add holes for openings
-  for (const op of wall.openings) {
-    const x0 = Math.max(0.01, op.offset)
-    const x1 = Math.min(len - 0.01, op.offset + op.width)
-    if (x1 <= x0) continue
-    const y0 = Math.max(0, op.sillHeight)
-    const y1 = Math.min(wall.height - 0.01, op.sillHeight + op.height)
-    if (y1 <= y0) continue
+  const openings = wall.openings
+    .map((op) => ({
+      x0: Math.max(0.001, op.offset),
+      x1: Math.min(len - 0.001, op.offset + op.width),
+      y0: Math.max(0, op.sillHeight),
+      y1: Math.min(h, op.sillHeight + op.height),
+    }))
+    .filter((op) => op.x1 > op.x0 + 0.001 && op.y1 > op.y0 + 0.001)
+    .sort((a, b) => a.x0 - b.x0)
 
-    const hole = new THREE.Path()
-    hole.moveTo(x0, y0)
-    hole.lineTo(x1, y0)
-    hole.lineTo(x1, y1)
-    hole.lineTo(x0, y1)
-    hole.closePath()
-    shape.holes.push(hole)
+  if (openings.length === 0) {
+    segs.push({ cx: len / 2, cy: h / 2, wx: len, wy: h })
+    return segs
   }
 
-  const extrudeSettings: THREE.ExtrudeGeometryOptions = {
-    depth: wall.thickness,
-    bevelEnabled: false,
+  // Collect x-cut points at each opening boundary
+  const xs = [
+    ...new Set([0, ...openings.flatMap((o) => [o.x0, o.x1]), len]),
+  ].sort((a, b) => a - b)
+
+  for (let i = 0; i < xs.length - 1; i++) {
+    const x0 = xs[i]
+    const x1 = xs[i + 1]
+    const wx = x1 - x0
+    if (wx < 0.001) continue
+    const cx = (x0 + x1) / 2
+
+    const op = openings.find((o) => o.x0 <= x0 + 0.001 && o.x1 >= x1 - 0.001)
+    if (!op) {
+      // Solid column
+      segs.push({ cx, cy: h / 2, wx, wy: h })
+    } else {
+      // Sill piece (below opening)
+      if (op.y0 > 0.001) {
+        segs.push({ cx, cy: op.y0 / 2, wx, wy: op.y0 })
+      }
+      // Lintel piece (above opening)
+      if (op.y1 < h - 0.001) {
+        segs.push({ cx, cy: (op.y1 + h) / 2, wx, wy: h - op.y1 })
+      }
+    }
   }
 
-  const geo = new THREE.ExtrudeGeometry(shape, extrudeSettings)
-
-  // ExtrudeGeometry creates shape in XY plane; we need to transform it:
-  // - Rotate so wall face is in XZ plane (shape X = along wall, shape Y = up)
-  // - Translate to actual wall position
-  // The extrude goes along +Z by default. We want it to go along wall thickness direction.
-
-  const angle = Math.atan2(dy, dx)
-
-  // The ExtrudeGeometry shape lives in the XY plane:
-  //   X = along wall (0 → len), Y = height (0 → wall.height), Z = extrude (0 → thickness)
-  // Three.js Y is already "up", so we only need to rotate around Y to orient the wall
-  // direction, then translate to the wall's start position.
-  //
-  // After makeRotationY(-angle), the extrude (+Z) maps to direction (-sin, 0, cos),
-  // which is the wall normal. Offset start by +thickness/2 along that normal so the
-  // wall is centred on the plan line.
-  const rotY = new THREE.Matrix4().makeRotationY(-angle)
-  const translate = new THREE.Matrix4().makeTranslation(
-    wall.start.x + Math.sin(angle) * wall.thickness / 2,
-    0,
-    wall.start.y - Math.cos(angle) * wall.thickness / 2
-  )
-
-  const matrix = new THREE.Matrix4().multiply(translate).multiply(rotY)
-  geo.applyMatrix4(matrix)
-  geo.computeVertexNormals()
-
-  return geo
+  return segs
 }
 
 export default function WallMesh({ wall, selected, onClick }: Props) {
-  const geometry = useMemo(() => buildWallGeometry(wall), [
-    wall.start.x, wall.start.y, wall.end.x, wall.end.y,
-    wall.height, wall.thickness,
-    // Re-compute when openings change
-    JSON.stringify(wall.openings),
-  ])
+  const segs = useMemo(
+    () => wallSegments(wall),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      wall.start.x, wall.start.y, wall.end.x, wall.end.y,
+      wall.height, wall.thickness,
+      JSON.stringify(wall.openings),
+    ]
+  )
+
+  const dx = wall.end.x - wall.start.x
+  const dy = wall.end.y - wall.start.y
+  const len = Math.hypot(dx, dy)
+
+  if (len < 0.05 || segs.length === 0) return null
+
+  // Angle of wall in the horizontal XZ plane (2D plan Y → 3D Z)
+  const angle = Math.atan2(dy, dx)
+
+  // Unit vectors: wall direction and normal in the XZ plane
+  const dirX = dx / len
+  const dirZ = dy / len
+
+  const color = selected ? '#ff9090' : wall.color
 
   return (
-    <mesh
-      geometry={geometry}
-      castShadow
-      receiveShadow
-      onClick={(e) => { e.stopPropagation(); onClick() }}
-    >
-      <meshStandardMaterial
-        color={selected ? '#ff9090' : wall.color}
-        roughness={0.7}
-        side={THREE.DoubleSide}
-      />
-    </mesh>
+    <group onClick={(e) => { e.stopPropagation(); onClick() }}>
+      {segs.map((seg, i) => (
+        <mesh
+          key={i}
+          // Position: start + seg.cx along wall direction, seg.cy upward
+          // BoxGeometry is centred at origin, so local Z (thickness) is already ±t/2
+          position={[
+            wall.start.x + seg.cx * dirX,
+            seg.cy,
+            wall.start.y + seg.cx * dirZ,
+          ]}
+          // Rotate around world Y so the box's local X aligns with the wall direction
+          rotation={[0, -angle, 0]}
+          castShadow
+          receiveShadow
+        >
+          <boxGeometry args={[seg.wx, seg.wy, wall.thickness]} />
+          <meshStandardMaterial color={color} roughness={0.7} />
+        </mesh>
+      ))}
+    </group>
   )
 }
