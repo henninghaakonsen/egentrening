@@ -59,23 +59,22 @@ function buildWallGeometry(wall: Wall): THREE.BufferGeometry {
 
   const angle = Math.atan2(dy, dx)
 
-  // Rotate: shape is in XY → rotate -90° around X to get XZ, then rotate around Y for wall direction
-  const matrix = new THREE.Matrix4()
-  // 1. Rotate shape from XY to XZ: rotate -90 deg around X axis
-  const rotX = new THREE.Matrix4().makeRotationX(-Math.PI / 2)
-  // 2. Rotate around Y for wall direction
+  // The ExtrudeGeometry shape lives in the XY plane:
+  //   X = along wall (0 → len), Y = height (0 → wall.height), Z = extrude (0 → thickness)
+  // Three.js Y is already "up", so we only need to rotate around Y to orient the wall
+  // direction, then translate to the wall's start position.
+  //
+  // After makeRotationY(-angle), the extrude (+Z) maps to direction (-sin, 0, cos),
+  // which is the wall normal. Offset start by +thickness/2 along that normal so the
+  // wall is centred on the plan line.
   const rotY = new THREE.Matrix4().makeRotationY(-angle)
-  // 3. Translate: center thickness across the wall, then to wall start position
-  // After rotX, the extrude (was +Z) is now -Y; we need to offset by thickness/2 in the normal direction
-  const normalX = Math.sin(angle)   // wall normal in X
-  const normalZ = -Math.cos(angle)  // wall normal in Z
   const translate = new THREE.Matrix4().makeTranslation(
-    wall.start.x - normalX * wall.thickness / 2,
+    wall.start.x + Math.sin(angle) * wall.thickness / 2,
     0,
-    wall.start.y - normalZ * wall.thickness / 2
+    wall.start.y - Math.cos(angle) * wall.thickness / 2
   )
 
-  matrix.multiply(translate).multiply(rotY).multiply(rotX)
+  const matrix = new THREE.Matrix4().multiply(translate).multiply(rotY)
   geo.applyMatrix4(matrix)
   geo.computeVertexNormals()
 

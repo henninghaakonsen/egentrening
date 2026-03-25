@@ -65,7 +65,7 @@ export const useStore = create<SceneState>((set) => ({
   outdoorElements: DEMO_OUTDOOR,
   selectedId: null,
   activeTool: 'velg',
-  viewMode: '3d',
+  viewMode: 'split',
 
   addWall: (wall) => {
     const id = uuidv4();
